@@ -1,0 +1,11 @@
+  #pinClimate: GPIO13
+  pinStatusLed: GPIO23
+  # We have to use numeric pin numbers for easy compatibility with the c++ code
+  # TODO: change all to numeric
+  pinPulseCounter: "36"
+  pinDallasSensor: GPIO18
+  pin_i2cSda: GPIO4  
+  pin_i2cScl: GPIO5
+  pinValveOpen: GPIO32
+  pinValveClose: GPIO22
+  pinValveToggle: GPIO21

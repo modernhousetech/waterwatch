@@ -1,0 +1,9 @@
+# We define these just to make dapp.h compile in wwi. They are not
+# used in wwi.
+switch:
+  - platform: gpio
+    pin: ${pinValveOpen}
+    id: valve_open
+  - platform: gpio
+    pin: ${pinValveOpen}
+    id: valve_close

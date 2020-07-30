@@ -1,0 +1,43 @@
+  # NOTE TODO: restore_mode has these options:
+  # See https://esphome.io/components/switch/gpio.html
+  # OFF - always initialize as off on boot
+  # ON - always initialize as on on boot.
+  # RESTORE_ON - try to restore and use ON as backup.
+  # RESTORE_OFF - try to restore and use OFF as backup (default)    
+switch:
+  - platform: gpio
+    pin: ${pinValveOpen}
+    inverted: yes
+    name: "Valve open"
+    id: valve_open
+    interlock: [valve_close]
+    on_turn_on:
+      - then:
+          lambda: |-
+            ESP_LOGD("main", "on_turn_on: open_valve");
+            dapp.set_valve_status(true);
+
+  - platform: gpio
+    pin: ${pinValveClose}
+    inverted: yes
+    name: "Valve Close"
+    id: valve_close
+    interlock: [valve_open]
+    on_turn_on:
+      - then:
+          lambda: |-
+            ESP_LOGD("main", "on_turn_on: close_valve");
+            dapp.set_valve_status(false);
+            
+    
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: ${pinValveToggle}
+      mode: INPUT_PULLDOWN
+    name: valve_toggle
+    on_press:
+      then: 
+        lambda: |-
+            ESP_LOGD("main", "on_press: toggle_valve");
+            dapp.toggle_valve();

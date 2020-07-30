@@ -1,0 +1,110 @@
+# esphome yaml for testing 
+# Use when something is broken to isolate the problem. 
+
+esphome:
+  name: ${app}_${location}
+  platform: ESP32
+  board: ${board}
+  includes: 
+    - "app_defs.h"
+    - "dapp.h"
+    - "dapp.cpp"
+    - "water_usage.h"
+    - "${app}.h"
+    - "helper.h"
+    - "helper.cpp"
+
+logger:
+  level: DEBUG
+
+ota:
+  password: !secret ota_password
+
+web_server:
+  port: 80
+
+mqtt:
+  # Give the mqtt component an ID
+  id: mqtt_client  
+  topic_prefix: ${app}/${location}
+  broker: !secret mqtt_local_broker
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+      - minutes: 0
+        seconds: 0
+        then:
+          lambda: |-
+            ESP_LOGD("main", "on_time: new hour");
+            dapp.on_new_hour();
+      - hours: 0
+        minutes: 0
+        seconds: 0
+        then:
+          lambda: |-
+            ESP_LOGD("main", "on_time: new day");
+            dapp.on_new_day();
+
+light:
+  - platform: fastled_clockless
+    chipset: WS2812
+    pin: ${pinStatusLed}
+    num_leds: 1
+    rgb_order: RGB
+    name: "Status LED"
+    id: _status_led
+
+# # Define onboard temperature sensor
+# dallas:
+#   - pin: ${pinDallasSensor}
+
+
+sensor:
+  - platform: pulse_counter
+    update_interval: ${pinPulseCounter}s
+    # filters:
+    #   - lambda: return dapp.process_pulse_counter(x);      
+      # filters:
+      #   - delta: 5.0
+      # - lambda: return x * (9.0/5.0);
+      # - sliding_window_moving_average:
+      #     window_size: 60
+      #     send_every: 15    
+    pin: 36
+    name: "wf"
+    id: wf
+    on_value:
+        then:
+          lambda: |-
+            dapp.process_wf_on_value(x);
+
+  # - platform: dallas
+  #   index: 0
+  #   name: "Internal temperature"
+
+status_led:
+  pin: ${pinStatusLed}
+
+i2c:
+  sda: ${pin_i2cSda}
+  scl: ${pin_i2cScl}
+  scan: False
+
+font:
+  - file: "OpenSans-Regular.ttf"
+    id: fontOpenSans
+    size: 24
+
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    # reset_pin: D0
+    address: 0x3C
+    lambda: |-
+      it.print(0, 8, id(fontOpenSans), "Modern");
+      it.print(4, 36, id(fontOpenSans), "House");

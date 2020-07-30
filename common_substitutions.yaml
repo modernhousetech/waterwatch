@@ -1,0 +1,4 @@
+
+# water flow sensor reporting period in seconds
+wf_report_wf_off_interval_secs: "180"
+wf_report_wf_on_interval_secs: "2"

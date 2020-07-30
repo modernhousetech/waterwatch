@@ -1,0 +1,21 @@
+substitutions:
+  app: wwi
+  location: "backyard"
+  Location: "Backyard"
+  board:  wemos_d1_mini32
+  #board: mhetesp32minikit
+
+  # uncomment if using wifi_static_ip.yaml
+  # ip_address: 192.168.2.219
+
+  <<: !include pin_defs_esp32.yaml
+  <<: !include common_substitutions.yaml
+
+# first time: comment out ip_address and use include wifi_static_ip
+<<: !include wifi.yaml
+#<<: !include wifi_static_ip.yaml
+#<<: !include wwi_mqtt.yaml
+#<<: !include nodemcu-32s.yaml
+<<: !include core_ww.yaml
+<<: !include core_wwi.yaml
+

@@ -1,0 +1,246 @@
+esphome:
+  name: ${app}_${location}
+  platform: ESP32
+  board: ${board}
+  # Unfortunately below doesn't work because it wipes out all the 
+  # default esphome build_flags which is a bug in esphome
+  # platformio_options:
+  #   build_flags: -D $app
+
+  on_boot:
+    # level 600 where sensors are setup but wifi (and mqtt) are not
+    priority: 600   
+    then:
+      lambda: |-
+        dapp.on_boot("${app}", $wf_report_wf_off_interval_secs, $wf_report_wf_on_interval_secs);
+  includes: 
+    - "app_defs.h"
+    - "app_logger.h"
+    - "dapp.h"
+    - "dapp.cpp"
+    - "water_usage.h"
+    - "${app}.h"
+    - "helper.h"
+    - "helper.cpp"
+    - "water_flow_sensor.h"
+    - "water_flow_sensor.cpp"
+    - "pulse_counter_sensor.h"
+    - "pulse_counter_sensor.cpp"
+    - "translation_unit.h"
+    - "signature.h"
+    - "signature.cpp"
+  # libraries:
+  #   - "pulse_counter"
+
+
+# debug:
+web_server:
+  port: 80
+
+# Enable logging
+# DEPENDENCY NOTE: copy the level here to LOG_LEVEL in app_defs.h 
+logger:
+  level: DEBUG
+
+ota:
+  password: !secret ota_password
+
+
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+      - minutes: 0
+        seconds: 0
+        then:
+          lambda: |-
+            ESP_LOGD("main", "on_time: new hour");
+            dapp.on_new_hour();
+      - hours: 0
+        minutes: 0
+        seconds: 0
+        then:
+          lambda: |-
+            ESP_LOGD("main", "on_time: new day");
+            dapp.on_new_day();
+
+switch:
+  - platform: restart
+    name: "restart"
+
+
+# # Define onboard temperature sensor
+# dallas:
+#   - pin: ${pinDallasSensor}
+  
+status_led:
+  pin: ${pinStatusLed}
+  
+i2c:
+  sda: ${pin_i2cSda}
+  scl: ${pin_i2cScl}
+  scan: False
+
+font:
+  - file: "OpenSans-Regular.ttf"
+    id: fontOpenSans
+    size: 24
+
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    # reset_pin: D0
+    address: 0x3C
+    lambda: |-
+      it.print(0, 8, id(fontOpenSans), "Modern");
+      it.print(4, 36, id(fontOpenSans), "House");
+
+sensor:
+  # - platform: pulse_counter
+  #   update_interval: ${pinPulseCounter}s
+  #   # filters:
+  #   #   - lambda: return dapp.process_pulse_counter(x);      
+  #     # filters:
+  #     #   - delta: 5.0
+  #     # - lambda: return x * (9.0/5.0);
+  #     # - sliding_window_moving_average:
+  #     #     window_size: 60
+  #     #     send_every: 15    
+  #   pin: 36
+  #   name: "wf"
+  #   id: wf
+  #   on_value:
+  #       then:
+  #         lambda: |-
+  #           dapp.process_wf_on_value(x);
+
+  # - platform: dallas
+  #   index: 0
+  #   name: "Internal temperature"
+
+  # Custom water flow pulse sensor, based on pulse_counter
+  - platform: custom
+    lambda: |-
+      WaterflowSensor* sensor = dapp.create_wf_sensor(${pinPulseCounter});
+      App.register_component(sensor);
+      return {sensor};
+
+    sensors:
+      name: "wf"
+      on_value:
+          then:
+            lambda: |-
+              dapp.process_wf_on_value(x);
+
+  # two housekeeping software sensors
+  - platform: wifi_signal
+    name: "wifi_signal"
+    update_interval: 5min
+
+  - platform: uptime
+    name: uptime
+    update_interval: 5min
+
+light:
+  - platform: fastled_clockless
+    chipset: WS2812
+    pin: ${pinStatusLed}
+    num_leds: 1
+    rgb_order: RGB
+    name: "Status LED"
+    id: _status_led
+    
+mqtt:
+  # Give the mqtt component an ID
+  id: mqtt_client  
+  topic_prefix: ${app}/${location}
+  broker: !secret mqtt_local_broker
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+
+  on_message:
+    - topic: ${app}/${location}/cmnd/get_closed
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/get_usage");
+
+          dapp.get_closed();
+
+    - topic: ${app}/${location}/cmnd/clear_closed
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/clear_usage");
+
+            dapp.clear_closed();
+
+    - topic: ${app}/${location}/cmnd/send_stat
+      then:
+        - logger.log: "at ${app}/${location}/cmnd/send_stat"
+        - lambda: |-
+            dapp.send_retained_properties();
+
+    - topic: ${app}/${location}/cmnd/reset
+      then:
+        - logger.log: "at ${app}/${location}/cmnd/reset"
+        - lambda: |-
+            dapp.reset();
+
+
+  on_json_message:
+
+    - topic: ${app}/${location}/cmnd/properties
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/properties");
+
+          dapp.process_properties(x);
+
+    # {  name: "washing machine",
+    #    upm: 1.1,
+    #    usage: -1,
+    #    expire_secs: 5400,
+    #    create_named_session: true }
+    - topic: ${app}/${location}/cmnd/add_allowance
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/add_allowance");
+
+          dapp.add_allowance(x);
+
+    # {  name: "washing machine",
+    #    cancel: false }
+    - topic: ${app}/${location}/cmnd/delete_allowance
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/delete_named");
+            dapp.delete_named_usage(x);
+
+    # {  name: "washing machine",
+    #    expire_secs: 5400 }
+    - topic: ${app}/${location}/cmnd/add_named
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/add_named");
+          dapp.add_named_usage(x);
+
+    # {  name: "washing machine",
+    #    cancel: false }
+    - topic: ${app}/${location}/cmnd/delete_named
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/delete_named");
+            dapp.delete_named_usage(x);
+
+    # {  wf_off: 2,
+    #    wf_on: 10 }
+    - topic: ${app}/${location}/cmnd/set_report_period_secs
+      then:
+        lambda: |-
+          ESP_LOGD("main", "${app}/${location}/cmnd/set_report_period_secs");
+            dapp.set_report_period_secs(x);
+
+    - topic: ${app}/${location}/stat
+      then:
+        lambda: |-
+          dapp.process_stat(x);

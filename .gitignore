@@ -1,0 +1,16 @@
+# Gitignore settings for ESPHome
+
+/.esphome/
+**/src
+**/.DS_Store
+**/.vscode
+**/.pioenvs/
+**/.piolibdeps/
+**/lib/
+**/src/esphome
+**/src/esphome.h
+**/platformio.ini
+**/partitions.csv
+/secrets.yaml
+/notes.txt
+

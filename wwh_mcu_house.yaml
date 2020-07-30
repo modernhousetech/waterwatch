@@ -1,0 +1,25 @@
+substitutions:
+  app: wwh
+  location: "house"
+  Location: "House"
+  board: nodemcu-32s
+  customm: "dapp.cpp"
+
+  # uncomment if using wifi_static_ip.yaml
+  # ip_address: 192.168.2.219
+
+  <<: !include pin_defs_esp32.yaml
+  <<: !include common_substitutions.yaml
+
+# first time: comment out ip_address and use include wifi_static_ip
+<<: !include wifi.yaml
+#<<: !include wifi_static_ip.yaml
+
+
+<<: !include core.yaml
+<<: !include core_wwh.yaml
+
+# For a clean, simple, no code build: 
+#   Comment out core...yaml includes above
+#   uncomment include below below
+# <<: !include base_test_only.yaml

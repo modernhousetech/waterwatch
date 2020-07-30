@@ -1,0 +1,14 @@
+# wifi def with static IP. This is useful when you need to make sure that the 
+# OTA uploader can find your device
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    # Set this to the IP of the ESP
+    static_ip: ${ip_address}
+    # Set this to the IP address of the router. Often ends with .1
+    gateway: 192.168.2.1
+    # The subnet of the network. 255.255.255.0 works for most home networks.
+    subnet: 255.255.255.0
+
